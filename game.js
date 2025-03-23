@@ -1161,15 +1161,9 @@ class Game {
                     // Eliminar el cofre
                     this.enemies = this.enemies.filter(e => e !== enemy);
                     
-                    // Generar corazón con probabilidad o dar experiencia
-                    if (Math.random() < 0.4) {
-                        this.createHeart(enemy.x, enemy.y);
-                    } else {
-                        // Dar experiencia al jugador (50-100)
-                        const expAmount = 50 + Math.floor(Math.random() * 51);
-                        this.player.gainExperience(expAmount);
-                        this.addDamageNumber(enemy.x, enemy.y, expAmount, 'experience');
-                    }
+                    // Otorgar un punto de habilidad
+                    this.player.skillPoints++;
+                    this.addDamageNumber(enemy.x, enemy.y - 30, '+1 Punto de Habilidad', 'skill');
                     
                     // Efecto visual
                     this.createChestCollectEffect(enemy.x, enemy.y);
