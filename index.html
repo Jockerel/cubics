@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cubics - Juego de Supervivencia Geométrica</title>
+    <title>Cubics</title>
     <style>
         body {
             margin: 0;
             padding: 0;
+            overflow: hidden;
+            background-color: #1a1a1a;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #1a1a2e;
-            font-family: Arial, sans-serif;
         }
         canvas {
-            border: 2px solid #4CAF50;
-            box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+            display: block;
+            margin: auto;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
 </body>
 </html> 

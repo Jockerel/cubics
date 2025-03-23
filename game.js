@@ -1,384 +1,5 @@
-class Player {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.name = "Equilibrado";
-        this.size = 30;
-        
-        // Estadísticas base
-        this.stats = {
-            health: 100,
-            maxHealth: 100,
-            strength: 25,
-            armor: 5,
-            agility: 5,
-            attackSpeed: 1,
-            critChance: 5,
-            critDamage: 150,
-            healthRegen: 0.02,
-            lifeSteal: 0,
-            range: 115,
-            moveSpeed: 5
-        };
-
-        // Valores calculados
-        this.attackRange = this.stats.range;
-        this.attackCooldown = 0;
-        this.maxAttackCooldown = 60 / this.stats.attackSpeed;
-        
-        // Sistema de progresión
-        this.level = 1;
-        this.experience = 0;
-        this.experienceToNextLevel = 100;
-        this.evolutionLevel = 0;
-        this.enemiesKilled = 0;
-        this.evolutionThresholds = [15, 30, 60, 120, 240, 360];
-        
-        this.color = '#ffb6c1';
-        this.eyesOpen = true;
-        this.blinkTimer = 0;
-        this.projectiles = [];
-        this.pickupRange = 100;
-
-        // Sistema de puntos de habilidad
-        this.skillPoints = 0;
-        
-        // Sistema de evolución
-        this.evolutionPoints = 0;
-        this.evolvedParts = {
-            head: false,
-            torso: false,
-            arms: false,
-            hands: false,
-            legs: false,
-            feet: false
-        };
-        
-        // Multiplicadores de evolución
-        this.evolutionMultipliers = {
-            health: 1,
-            healthRegen: 1,
-            strength: 1,
-            attackSpeed: 1,
-            critChance: 1,
-            critDamage: 1,
-            lifeSteal: 1,
-            range: 1,
-            moveSpeed: 1,
-            agility: 1
-        };
-
-        // Sistema de enfriamiento de colisión
-        this.collisionCooldown = 0;
-        this.maxCollisionCooldown = 60; // 1 segundo (60 frames)
-    }
-
-    draw(ctx) {
-        // Sombra
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetY = 5;
-
-        // Cuerpo del cubo (rosa claro)
-        ctx.fillStyle = '#FFB6C1';
-        ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-        
-        // Resetear sombra
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
-
-        // Borde del cubo
-        ctx.strokeStyle = '#FF69B4';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
-
-        // Ojos
-        const eyeSize = this.size * 0.15;
-        ctx.fillStyle = '#000';
-        // Ojo izquierdo
-        ctx.beginPath();
-        ctx.arc(this.x - this.size/4, this.y - this.size/6, eyeSize, 0, Math.PI * 2);
-        ctx.fill();
-        // Ojo derecho
-        ctx.beginPath();
-        ctx.arc(this.x + this.size/4, this.y - this.size/6, eyeSize, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Brillos en los ojos
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(this.x - this.size/4 + eyeSize/2, this.y - this.size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
-        ctx.arc(this.x + this.size/4 + eyeSize/2, this.y - this.size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Sonrisa
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y + this.size/6, this.size/4, 0, Math.PI);
-        ctx.stroke();
-
-        // Brazos
-        ctx.strokeStyle = '#FF69B4';
-        ctx.lineWidth = 3;
-        // Brazo izquierdo
-        ctx.beginPath();
-        ctx.moveTo(this.x - this.size/2, this.y);
-        ctx.lineTo(this.x - this.size/2 - 10, this.y + 5);
-        ctx.stroke();
-        // Brazo derecho
-        ctx.beginPath();
-        ctx.moveTo(this.x + this.size/2, this.y);
-        ctx.lineTo(this.x + this.size/2 + 10, this.y + 5);
-        ctx.stroke();
-
-        // Dibujar proyectiles más visibles
-        ctx.save();
-        this.projectiles.forEach(proj => {
-            // Sombra del proyectil
-            ctx.shadowColor = 'rgba(255, 182, 193, 0.8)';
-            ctx.shadowBlur = 15;
-
-            // Gradiente para el proyectil
-            const gradient = ctx.createRadialGradient(
-                proj.x, proj.y, 0,
-                proj.x, proj.y, proj.size
-            );
-            gradient.addColorStop(0, '#FFC0CB');
-            gradient.addColorStop(0.6, '#FFB6C1');
-            gradient.addColorStop(1, '#FF69B4');
-
-            // Dibujar aura exterior
-            ctx.fillStyle = 'rgba(255, 182, 193, 0.3)';
-            ctx.beginPath();
-            ctx.arc(proj.x, proj.y, proj.size * 1.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Dibujar proyectil principal
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(proj.x, proj.y, proj.size, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Destellos
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(proj.x - proj.size/3, proj.y - proj.size/3, proj.size/4, 0, Math.PI * 2);
-            ctx.fill();
-        });
-        ctx.restore();
-    }
-
-    move(dx, dy) {
-        // Calcular nueva posición
-        const newX = this.x + dx * this.stats.moveSpeed;
-        const newY = this.y + dy * this.stats.moveSpeed;
-        
-        // Limitar movimiento dentro de los límites de la pantalla
-        this.x = Math.max(this.size/2, Math.min(window.innerWidth - this.size/2, newX));
-        this.y = Math.max(this.size/2, Math.min(window.innerHeight - this.size/2, newY));
-    }
-
-    attack(enemies) {
-        if (this.attackCooldown > 0) {
-            this.attackCooldown--;
-            return;
-        }
-
-        // Encontrar el enemigo más cercano
-        let closestEnemy = null;
-        let minDistance = this.attackRange;
-        
-        enemies.forEach(enemy => {
-            const dx = enemy.x - this.x;
-            const dy = enemy.y - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= this.attackRange && (closestEnemy === null || distance < minDistance)) {
-                closestEnemy = enemy;
-                minDistance = distance;
-            }
-        });
-
-        if (closestEnemy) {
-            const dx = closestEnemy.x - this.x;
-            const dy = closestEnemy.y - this.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Determinar si es crítico
-            const isCritical = Math.random() * 100 < this.stats.critChance;
-            const damage = this.stats.strength * (isCritical ? this.stats.critDamage / 100 : 1);
-            
-            // Crear proyectil
-            this.projectiles.push({
-                x: this.x,
-                y: this.y,
-                dx: (dx / distance) * 5,
-                dy: (dy / distance) * 5,
-                size: 12,
-                damage: damage,
-                isCritical: isCritical
-            });
-            
-            this.attackCooldown = this.maxAttackCooldown;
-        }
-    }
-
-    takeDamage(damage) {
-        // Calcular reducción de daño por armadura
-        const damageReduction = this.stats.armor / (this.stats.armor + 100);
-        const actualDamage = damage * (1 - damageReduction);
-        
-        // Calcular probabilidad de esquivar
-        if (Math.random() * 100 < this.stats.agility) {
-            game.addDamageNumber(this.x, this.y - this.size, 0, 'miss');
-            return 0; // Daño esquivado
-        }
-        
-        // Aplicar el daño a la vida actual
-        this.stats.health = Math.max(0, this.stats.health - actualDamage);
-        game.addDamageNumber(this.x, this.y - this.size, actualDamage, 'received');
-        return actualDamage;
-    }
-
-    update() {
-        // Regeneración de vida
-        this.stats.health = Math.min(this.stats.maxHealth, this.stats.health + this.stats.healthRegen);
-
-        // Actualizar proyectiles
-        this.projectiles.forEach(proj => {
-            proj.x += proj.dx;
-            proj.y += proj.dy;
-        });
-
-        // Eliminar proyectiles fuera de pantalla
-        this.projectiles = this.projectiles.filter(proj => 
-            proj.x > 0 && proj.x < window.innerWidth &&
-            proj.y > 0 && proj.y < window.innerHeight
-        );
-    }
-
-    gainExperience(amount) {
-        this.experience += amount;
-        while (this.experience >= this.experienceToNextLevel) {
-            this.levelUp();
-        }
-    }
-
-    levelUp() {
-        this.level++;
-        this.experience -= this.experienceToNextLevel;
-        this.experienceToNextLevel = Math.floor(this.experienceToNextLevel * 1.5);
-        
-        // Otorgar punto de habilidad
-        this.skillPoints++;
-        
-        // Ya no mejoramos las estadísticas automáticamente
-        // Actualizar valores calculados
-        this.attackRange = this.stats.range;
-        this.maxAttackCooldown = 60 / this.stats.attackSpeed;
-    }
-
-    updateEvolution() {
-        const previousLevel = this.evolutionLevel;
-        for (let i = this.evolutionThresholds.length - 1; i >= 0; i--) {
-            if (this.enemiesKilled >= this.evolutionThresholds[i]) {
-                this.evolutionLevel = i + 1;
-                break;
-            }
-        }
-        // Otorgar punto de evolución si subió de nivel
-        if (this.evolutionLevel > previousLevel) {
-            this.evolutionPoints++;
-        }
-    }
-
-    useSkillPoint(stat) {
-        if (this.skillPoints <= 0) return false;
-        
-        switch(stat) {
-            case 'health':
-                this.stats.maxHealth += 8 * this.evolutionMultipliers.health;
-                this.stats.health = this.stats.maxHealth;
-                break;
-            case 'strength':
-                this.stats.strength += 1.5 * this.evolutionMultipliers.strength;
-                break;
-            case 'armor':
-                this.stats.armor += 1.5;
-                break;
-            case 'agility':
-                this.stats.agility += 0.8 * this.evolutionMultipliers.agility;
-                break;
-            case 'attackSpeed':
-                this.stats.attackSpeed += 0.15 * this.evolutionMultipliers.attackSpeed;
-                break;
-            case 'critChance':
-                this.stats.critChance += 1.5 * this.evolutionMultipliers.critChance;
-                break;
-            case 'critDamage':
-                this.stats.critDamage += 8 * this.evolutionMultipliers.critDamage;
-                break;
-            case 'healthRegen':
-                this.stats.healthRegen += 0.021 * this.evolutionMultipliers.healthRegen; // Reducido de 0.03 a 0.021 (30% menos)
-                break;
-            case 'lifeSteal':
-                this.stats.lifeSteal += 0.8 * this.evolutionMultipliers.lifeSteal;
-                break;
-            case 'range':
-                this.stats.range += 4 * this.evolutionMultipliers.range;
-                break;
-            case 'moveSpeed':
-                this.stats.moveSpeed += 0.25 * this.evolutionMultipliers.moveSpeed;
-                break;
-            default:
-                return false;
-        }
-        
-        this.skillPoints--;
-        // Actualizar valores calculados
-        this.attackRange = this.stats.range;
-        this.maxAttackCooldown = 60 / this.stats.attackSpeed;
-        return true;
-    }
-
-    evolve(part) {
-        if (this.evolutionPoints <= 0 || this.evolvedParts[part]) return false;
-        
-        switch(part) {
-            case 'head':
-                this.evolutionMultipliers.critChance *= 1.5;
-                this.evolutionMultipliers.critDamage *= 1.5;
-                break;
-            case 'torso':
-                this.evolutionMultipliers.health *= 1.5;
-                this.evolutionMultipliers.healthRegen *= 1.5;
-                break;
-            case 'arms':
-                this.evolutionMultipliers.strength *= 1.5;
-                this.evolutionMultipliers.attackSpeed *= 1.5;
-                break;
-            case 'hands':
-                this.evolutionMultipliers.lifeSteal *= 1.5;
-                this.evolutionMultipliers.critChance *= 1.5;
-                break;
-            case 'legs':
-                this.evolutionMultipliers.moveSpeed *= 1.5;
-                this.evolutionMultipliers.agility *= 1.5;
-                break;
-            case 'feet':
-                this.evolutionMultipliers.range *= 1.5;
-                this.evolutionMultipliers.moveSpeed *= 1.5;
-                break;
-            default:
-                return false;
-        }
-        
-        this.evolvedParts[part] = true;
-        this.evolutionPoints--;
-        return true;
-    }
-}
+// Importar la clase Player
+import Player from './player/Player.js';
 
 class Enemy {
     constructor(x, y, type) {
@@ -1484,16 +1105,17 @@ class Enemy {
 
         // Eliminar proyectiles fuera de pantalla
         this.projectiles = this.projectiles.filter(proj => 
-            proj.x > 0 && proj.x < game.canvas.width &&
-            proj.y > 0 && proj.y < game.canvas.height
+            proj.x > 0 && proj.x < window.game.canvas.width &&
+            proj.y > 0 && proj.y < window.game.canvas.height
         );
     }
 }
 
 class Game {
     constructor() {
-        this.canvas = document.getElementById('gameCanvas');
+        this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
+        document.body.appendChild(this.canvas);
         this.resizeCanvas();
         
         this.state = 'menu';
@@ -2571,275 +2193,275 @@ class Game {
     }
 
     update() {
-        if (this.state === 'playing') {
-            // Si hay una cuenta regresiva activa o el juego está pausado, no actualizar el juego
-            if (this.countdownTimer || this.state === 'paused') {
-                if (this.spawnInterval) {
-                    clearInterval(this.spawnInterval);
-                    this.spawnInterval = null;
-                }
-                return;
-            }
+        if (this.state !== 'playing' || this.countdownTimer) return;
 
-            // Movimiento del jugador
-            if (this.keys['ArrowLeft']) this.player.move(-1, 0);
-            if (this.keys['ArrowRight']) this.player.move(1, 0);
-            if (this.keys['ArrowUp']) this.player.move(0, -1);
-            if (this.keys['ArrowDown']) this.player.move(0, 1);
+        // Actualizar jugador
+        this.player.update();
 
-            // Actualizar jugador
-            this.player.update();
+        // Movimiento del jugador
+        if (this.keys['ArrowLeft'] || this.keys['a']) this.player.move(-1, 0);
+        if (this.keys['ArrowRight'] || this.keys['d']) this.player.move(1, 0);
+        if (this.keys['ArrowUp'] || this.keys['w']) this.player.move(0, -1);
+        if (this.keys['ArrowDown'] || this.keys['s']) this.player.move(0, 1);
 
-            // Actualizar enfriamiento de colisión del jugador
-            if (this.player.collisionCooldown > 0) {
-                this.player.collisionCooldown--;
-            }
+        // Ataque automático
+        this.player.attack(this.enemies);
 
-            // Ataque automático del jugador
-            this.player.attack(this.enemies);
+        // Comprobar colisión con enemigos
+        this.enemies.forEach(enemy => {
+            // Actualizar enemigo
+            enemy.update();
+            enemy.moveTowardsPlayer(this.player);
+            enemy.shoot(this.player);
 
-            // Actualizar proyectiles del jugador y verificar colisiones
-            this.player.projectiles = this.player.projectiles.filter(proj => {
-                let hit = false;
-                
-                // Verificar colisión con enemigos
-                this.enemies.forEach(enemy => {
-                    if (!hit) {
-                        const dx = enemy.x - proj.x;
-                        const dy = enemy.y - proj.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (distance < (enemy.size + proj.size) / 2) {
-                            enemy.health -= proj.damage;
-                            // Mostrar el daño con el color apropiado
-                            this.addDamageNumber(
-                                enemy.x,
-                                enemy.y - enemy.size,
-                                proj.damage,
-                                proj.isCritical ? 'crit' : 'normal'
-                            );
-                            hit = true;
-                        }
-                    }
-                });
-                
-                return !hit && 
-                    proj.x > 0 && proj.x < this.canvas.width &&
-                    proj.y > 0 && proj.y < this.canvas.height;
-            });
-
-            // Actualizar enemigos y sus proyectiles
-            this.enemies.forEach(enemy => {
-                enemy.moveTowardsPlayer(this.player);
-                enemy.update(); // Actualizar proyectiles
-                enemy.shoot(this.player);
-
-                // Actualizar enfriamiento de colisión del enemigo
-                if (enemy.collisionCooldown > 0) {
-                    enemy.collisionCooldown--;
-                }
-            });
-
-            // Verificar colisiones con proyectiles enemigos
-            this.enemies.forEach(enemy => {
-                enemy.projectiles = enemy.projectiles.filter(proj => {
-                    const dx = this.player.x - proj.x;
-                    const dy = this.player.y - proj.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < (this.player.size + proj.size) / 2) {
-                        // El enemigo causa daño al jugador con el proyectil
-                        this.player.takeDamage(enemy.damage);
-                        return false;
-                    }
-                    
-                    return true;
-                });
-            });
-
-            // Verificar colisiones y muerte de enemigos
-            this.enemies = this.enemies.filter(enemy => {
-                const dx = this.player.x - enemy.x;
-                const dy = this.player.y - enemy.y;
+            // Comprobar colisión con proyectiles del jugador
+            this.player.projectiles.forEach((proj, projIndex) => {
+                const dx = proj.x - enemy.x;
+                const dy = proj.y - enemy.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < (this.player.size + enemy.size) / 2) {
-                    // Verificar enfriamiento de colisión
-                    if (this.player.collisionCooldown === 0) {
-                        // El enemigo causa daño al jugador por colisión
-                        this.player.takeDamage(enemy.damage);
-                        this.player.collisionCooldown = this.player.maxCollisionCooldown;
-                    }
-                    
-                    if (enemy.collisionCooldown === 0) {
-                        // El jugador causa daño al enemigo por colisión
-                        enemy.health -= this.player.stats.strength;
-                        // Mostrar el daño causado al enemigo
-                        this.addDamageNumber(enemy.x, enemy.y - enemy.size, this.player.stats.strength, 'normal');
-                        enemy.collisionCooldown = enemy.maxCollisionCooldown;
+
+                if (distance < enemy.size + proj.size) {
+                    // Eliminar proyectil
+                    this.player.projectiles.splice(projIndex, 1);
+
+                    // Aplicar daño al enemigo
+                    enemy.health -= proj.damage;
+
+                    // Mostrar número de daño
+                    this.addDamageNumber(enemy.x, enemy.y, proj.damage, proj.isCritical ? 'critical' : 'normal');
+
+                    // Aplicar robo de vida si corresponde
+                    if (this.player.stats.lifeSteal > 0) {
+                        const healAmount = proj.damage * (this.player.stats.lifeSteal / 100);
+                        this.player.stats.health = Math.min(this.player.stats.maxHealth, this.player.stats.health + healAmount);
+                        // Mostrar número de curación
+                        this.addDamageNumber(this.player.x, this.player.y - this.player.size, Math.round(healAmount), 'heal');
                     }
                 }
-                
-                if (enemy.health <= 0) {
-                    // Efecto especial para la muerte del jefe
-                    if (enemy.type === 'star' || enemy.type === 'diamond' || enemy.type === 'finalBoss') {
-                        // Crear explosión de partículas
-                        this.createBossDeathEffect(enemy.x, enemy.y);
-                        // Otorgar 5 puntos de habilidad
-                        this.player.skillPoints += 5;
-                        // Mostrar mensaje especial
-                        if (enemy.type === 'finalBoss') {
-                            this.addDamageNumber(enemy.x, enemy.y - 100, "Has salvado nuestro mundo....", 'boss');
-                            setTimeout(() => {
-                                this.addDamageNumber(enemy.x, enemy.y - 60, "Gracias....", 'boss');
-                            }, 1500);
-                        }
-                        this.addDamageNumber(enemy.x, enemy.y - 30, '+5 Puntos de Habilidad', 'boss');
-                        // Aumentar más la puntuación por derrotar al jefe
-                        this.score += enemy.type === 'finalBoss' ? 2000 : 1000;
-                    } else if (enemy.type === 'chest') {
-                        // Crear un cofre del tesoro al morir
-                        this.hearts.push({
-                            x: enemy.x,
-                            y: enemy.y,
-                            size: 20,
-                            isChest: true,
-                            rotation: 0,
-                            scale: 1,
-                            alpha: 1
-                        });
-                    }
-                    
-                    // 15% de probabilidad de soltar un corazón
-                    if (Math.random() < 0.15) {
-                        this.hearts.push({
-                            x: enemy.x,
-                            y: enemy.y,
-                            size: 15
-                        });
-                    }
-                    
-                    this.player.enemiesKilled++;
-                    this.player.gainExperience(20);
-                    this.player.updateEvolution();
-                    this.score += 100;
-                    return false;
-                }
-                
-                return true;
             });
 
-            // Verificar si el jugador ha muerto
-            if (this.player.stats.health <= 0) {
-                this.state = 'gameOver';
-            }
+            // Comprobar colisión con proyectiles del enemigo
+            enemy.projectiles.forEach((proj, projIndex) => {
+                const dx = proj.x - this.player.x;
+                const dy = proj.y - this.player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-            // Verificar fin de oleada (modificado para tener en cuenta el spawn gradual)
-            if (this.enemies.length === 0 && this.enemiesSpawned >= this.totalEnemiesForWave) {
-                if (this.spawnInterval) {
-                    clearInterval(this.spawnInterval);
-                    this.spawnInterval = null;
+                if (distance < this.player.size + proj.size) {
+                    // Eliminar proyectil
+                    enemy.projectiles.splice(projIndex, 1);
+
+                    // Aplicar daño al jugador
+                    const damageResult = this.player.takeDamage(enemy.damage);
+                    if (damageResult.type === 'miss') {
+                        this.addDamageNumber(this.player.x, this.player.y - this.player.size, 0, 'miss');
+                    } else {
+                        this.addDamageNumber(this.player.x, this.player.y - this.player.size, damageResult.damage, 'received');
+                    }
                 }
-                this.wave++;
-                if (this.wave > 25) {
-                    this.state = 'gameOver';
+            });
+
+            // Comprobar colisión directa jugador-enemigo
+            const dx = this.player.x - enemy.x;
+            const dy = this.player.y - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < this.player.size + enemy.size) {
+                // Si es un cofre, recogerlo
+                if (enemy.type === 'chest') {
+                    // Eliminar el cofre
+                    this.enemies = this.enemies.filter(e => e !== enemy);
+                    
+                    // Generar corazón con probabilidad o dar experiencia
+                    if (Math.random() < 0.4) {
+                        this.createHeart(enemy.x, enemy.y);
+                    } else {
+                        // Dar experiencia al jugador (50-100)
+                        const expAmount = 50 + Math.floor(Math.random() * 51);
+                        this.player.gainExperience(expAmount);
+                        this.addDamageNumber(enemy.x, enemy.y, expAmount, 'experience');
+                    }
+                    
+                    // Efecto visual
+                    this.createChestCollectEffect(enemy.x, enemy.y);
+                    
                     return;
                 }
-                this.state = 'waveComplete';
+                
+                // Si el jugador o el enemigo están en enfriamiento de colisión, no aplicar daño
+                if (this.player.collisionCooldown > 0 || enemy.collisionCooldown > 0) {
+                    return;
+                }
+                
+                // Aplicar daño al jugador por colisión con enemigo (50% del daño normal)
+                const collisionDamage = enemy.damage * 0.5;
+                const damageResult = this.player.takeDamage(collisionDamage);
+                if (damageResult.type === 'miss') {
+                    this.addDamageNumber(this.player.x, this.player.y - this.player.size, 0, 'miss');
+                } else {
+                    this.addDamageNumber(this.player.x, this.player.y - this.player.size, damageResult.damage, 'received');
+                }
+                
+                // Aplicar enfriamiento de colisión
+                this.player.collisionCooldown = this.player.maxCollisionCooldown;
+                enemy.collisionCooldown = enemy.maxCollisionCooldown;
+            }
+        });
+
+        // Verificar colisiones y muerte de enemigos
+        this.enemies = this.enemies.filter(enemy => {
+            const dx = this.player.x - enemy.x;
+            const dy = this.player.y - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < (this.player.size + enemy.size) / 2) {
+                // Verificar enfriamiento de colisión
+                if (this.player.collisionCooldown === 0) {
+                    // El enemigo causa daño al jugador por colisión
+                    const damageResult = this.player.takeDamage(enemy.damage);
+                    if (damageResult.type === 'miss') {
+                        this.addDamageNumber(this.player.x, this.player.y - this.player.size, 0, 'miss');
+                    } else {
+                        this.addDamageNumber(this.player.x, this.player.y - this.player.size, damageResult.damage, 'received');
+                    }
+                    this.player.collisionCooldown = this.player.maxCollisionCooldown;
+                }
+                
+                if (enemy.collisionCooldown === 0) {
+                    // El jugador causa daño al enemigo por colisión
+                    enemy.health -= this.player.stats.strength;
+                    // Mostrar el daño causado al enemigo
+                    this.addDamageNumber(enemy.x, enemy.y - enemy.size, this.player.stats.strength, 'normal');
+                    enemy.collisionCooldown = enemy.maxCollisionCooldown;
+                }
+            }
+            
+            if (enemy.health <= 0) {
+                // Efecto especial para la muerte del jefe
+                if (enemy.type === 'star' || enemy.type === 'diamond' || enemy.type === 'finalBoss') {
+                    // Crear explosión de partículas
+                    this.createBossDeathEffect(enemy.x, enemy.y);
+                    // Otorgar 5 puntos de habilidad
+                    this.player.skillPoints += 5;
+                    // Mostrar mensaje especial
+                    if (enemy.type === 'finalBoss') {
+                        this.addDamageNumber(enemy.x, enemy.y - 100, "Has salvado nuestro mundo....", 'boss');
+                        setTimeout(() => {
+                            this.addDamageNumber(enemy.x, enemy.y - 60, "Gracias....", 'boss');
+                        }, 1500);
+                    }
+                    this.addDamageNumber(enemy.x, enemy.y - 30, '+5 Puntos de Habilidad', 'boss');
+                    // Aumentar más la puntuación por derrotar al jefe
+                    this.score += enemy.type === 'finalBoss' ? 2000 : 1000;
+                } else if (enemy.type === 'chest') {
+                    // Crear un cofre del tesoro al morir
+                    this.hearts.push({
+                        x: enemy.x,
+                        y: enemy.y,
+                        size: 20,
+                        isChest: true,
+                        rotation: 0,
+                        scale: 1,
+                        alpha: 1
+                    });
+                }
+                
+                // 15% de probabilidad de soltar un corazón
+                if (Math.random() < 0.15) {
+                    this.hearts.push({
+                        x: enemy.x,
+                        y: enemy.y,
+                        size: 15
+                    });
+                }
+                
+                this.player.enemiesKilled++;
+                this.player.gainExperience(20);
+                this.player.updateEvolution();
+                this.score += 100;
+                return false;
+            }
+            
+            return true;
+        });
+
+        // Verificar si el jugador ha muerto
+        if (this.player.stats.health <= 0) {
+            this.state = 'gameOver';
+        }
+
+        // Verificar fin de oleada (modificado para tener en cuenta el spawn gradual)
+        if (this.enemies.length === 0 && this.enemiesSpawned >= this.totalEnemiesForWave) {
+            if (this.spawnInterval) {
+                clearInterval(this.spawnInterval);
+                this.spawnInterval = null;
+            }
+            this.wave++;
+            if (this.wave > 25) {
+                this.state = 'gameOver';
                 return;
             }
+            this.state = 'waveComplete';
+            return;
+        }
 
-            // Actualizar partículas
-            this.particles = this.particles.filter(particle => {
-                particle.x += particle.dx;
-                particle.y += particle.dy;
-                particle.alpha -= particle.fadeSpeed;
-                particle.size += particle.growthRate;
-                return particle.alpha > 0;
-            });
+        // Actualizar partículas
+        this.particles = this.particles.filter(particle => {
+            particle.x += particle.dx;
+            particle.y += particle.dy;
+            particle.alpha -= particle.fadeSpeed;
+            particle.size += particle.growthRate;
+            return particle.alpha > 0;
+        });
 
-            // Actualizar corazones y cofres
-            this.hearts = this.hearts.filter(heart => {
-                if (heart.isChest) {
-                    // Animación del cofre
-                    heart.rotation = Math.sin(Date.now() / 500) * 0.1;
-                    heart.scale = 1 + Math.sin(Date.now() / 300) * 0.1;
-                    
-                    // Si el jugador está cerca, recoger el cofre
-                    const dx = this.player.x - heart.x;
-                    const dy = this.player.y - heart.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < this.player.size) {
-                        this.player.skillPoints++; // Dar un punto de habilidad
-                        // Mostrar mensaje de +1 punto de habilidad
-                        this.addDamageNumber(heart.x, heart.y - 30, '+1 Punto de Habilidad', 'skill');
-                        // Crear efecto de partículas doradas
-                        this.createChestCollectEffect(heart.x, heart.y);
-                        return false;
-                    }
-                    return true;
-                } else {
-                    // Si el jugador está cerca y no tiene vida completa, mover el corazón hacia él
-                    if (this.player.stats.health < this.player.stats.maxHealth) {
-                        const dx = this.player.x - heart.x;
-                        const dy = this.player.y - heart.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        // Si el corazón está dentro del rango de atracción, moverlo hacia el jugador
-                        if (distance < this.player.pickupRange) {
-                            // Calcular dirección hacia el jugador
-                            const angle = Math.atan2(dy, dx);
-                            const speed = 5; // Velocidad de atracción
-                            heart.x += Math.cos(angle) * speed;
-                            heart.y += Math.sin(angle) * speed;
-                            
-                            // Si el corazón está muy cerca del jugador, curarlo
-                            if (distance < this.player.size) {
-                                this.player.stats.health = Math.min(
-                                    this.player.stats.maxHealth,
-                                    this.player.stats.health + 10
-                                );
-                                return false;
-                            }
-                        }
-                    }
-                    return true;
-                }
-            });
-        } else if (this.state === 'waveComplete') {
-            // Atraer corazones y cofres hacia el jugador durante la pausa entre oleadas
-            this.hearts = this.hearts.filter(heart => {
+        // Actualizar corazones y cofres
+        this.hearts = this.hearts.filter(heart => {
+            if (heart.isChest) {
+                // Animación del cofre
+                heart.rotation = Math.sin(Date.now() / 500) * 0.1;
+                heart.scale = 1 + Math.sin(Date.now() / 300) * 0.1;
+                
+                // Si el jugador está cerca, recoger el cofre
                 const dx = this.player.x - heart.x;
                 const dy = this.player.y - heart.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                // Calcular dirección hacia el jugador
-                const angle = Math.atan2(dy, dx);
-                const speed = 8; // Velocidad de atracción más alta durante la pausa
-                
-                // Mover el corazón/cofre hacia el jugador
-                heart.x += Math.cos(angle) * speed;
-                heart.y += Math.sin(angle) * speed;
-                
-                // Si está cerca del jugador, procesar la recolección
                 if (distance < this.player.size) {
-                    if (heart.isChest) {
-                        this.player.skillPoints++;
-                        this.addDamageNumber(heart.x, heart.y - 30, '+1 Punto de Habilidad', 'skill');
-                        this.createChestCollectEffect(heart.x, heart.y);
-                    } else if (this.player.stats.health < this.player.stats.maxHealth) {
-                        this.player.stats.health = Math.min(
-                            this.player.stats.maxHealth,
-                            this.player.stats.health + 10
-                        );
-                    }
+                    this.player.skillPoints++; // Dar un punto de habilidad
+                    // Mostrar mensaje de +1 punto de habilidad
+                    this.addDamageNumber(heart.x, heart.y - 30, '+1 Punto de Habilidad', 'skill');
+                    // Crear efecto de partículas doradas
+                    this.createChestCollectEffect(heart.x, heart.y);
                     return false;
                 }
                 return true;
-            });
-            return;
-        }
+            } else {
+                // Si el jugador está cerca y no tiene vida completa, mover el corazón hacia él
+                if (this.player.stats.health < this.player.stats.maxHealth) {
+                    const dx = this.player.x - heart.x;
+                    const dy = this.player.y - heart.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Si el corazón está dentro del rango de atracción, moverlo hacia el jugador
+                    if (distance < this.player.pickupRange) {
+                        // Calcular dirección hacia el jugador
+                        const angle = Math.atan2(dy, dx);
+                        const speed = 5; // Velocidad de atracción
+                        heart.x += Math.cos(angle) * speed;
+                        heart.y += Math.sin(angle) * speed;
+                        
+                        // Si el corazón está muy cerca del jugador, curarlo
+                        if (distance < this.player.size) {
+                            this.player.stats.health = Math.min(
+                                this.player.stats.maxHealth,
+                                this.player.stats.health + 10
+                            );
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+        });
     }
 
     showStatPreview(stat) {
@@ -2863,11 +2485,21 @@ class Game {
             <h3 style="margin: 0 0 15px 0;">Confirmar Mejora</h3>
             <p>Valor actual: ${oldValue}</p>
             <p>Nuevo valor: ${newValue}</p>
-            <button onclick="game.confirmStatImprovement('${stat}')" style="margin: 10px; padding: 5px 15px;">Confirmar</button>
-            <button onclick="game.cancelStatImprovement()" style="margin: 10px; padding: 5px 15px;">Cancelar</button>
+            <button id="confirmStat" style="margin: 10px; padding: 5px 15px;">Confirmar</button>
+            <button id="cancelStat" style="margin: 10px; padding: 5px 15px;">Cancelar</button>
         `;
         
         document.body.appendChild(confirmWindow);
+        this.confirmWindow = confirmWindow;
+        
+        // Añadir event listeners para los botones
+        document.getElementById('confirmStat').addEventListener('click', () => {
+            this.confirmStatImprovement(stat);
+        });
+        
+        document.getElementById('cancelStat').addEventListener('click', () => {
+            this.cancelStatImprovement();
+        });
     }
 
     showEvolutionPreview(part) {
@@ -2886,11 +2518,21 @@ class Game {
         confirmWindow.innerHTML = `
             <h3 style="margin: 0 0 15px 0;">Confirmar Evolución</h3>
             <p>¿Deseas evolucionar esta parte?</p>
-            <button onclick="game.confirmEvolution('${part}')" style="margin: 10px; padding: 5px 15px;">Confirmar</button>
-            <button onclick="game.cancelEvolution()" style="margin: 10px; padding: 5px 15px;">Cancelar</button>
+            <button id="confirmEvo" style="margin: 10px; padding: 5px 15px;">Confirmar</button>
+            <button id="cancelEvo" style="margin: 10px; padding: 5px 15px;">Cancelar</button>
         `;
         
         document.body.appendChild(confirmWindow);
+        this.confirmWindow = confirmWindow;
+        
+        // Añadir event listeners para los botones
+        document.getElementById('confirmEvo').addEventListener('click', () => {
+            this.confirmEvolution(part);
+        });
+        
+        document.getElementById('cancelEvo').addEventListener('click', () => {
+            this.cancelEvolution();
+        });
     }
 
     getStatValue(stat) {
