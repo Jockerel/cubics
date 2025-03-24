@@ -49,7 +49,6 @@ class Game {
                 case 'w':
                 case 'W':
                     this.keys.up = true;
-                    this.keys.w = true;
                     if (this.devMode) {
                         this.wave = Math.min(25, this.wave + 1);
                     }
@@ -58,7 +57,6 @@ class Game {
                 case 's':
                 case 'S':
                     this.keys.down = true;
-                    this.keys.s = true;
                     if (this.devMode) {
                         this.wave = Math.max(1, this.wave - 1);
                     }
@@ -67,7 +65,6 @@ class Game {
                 case 'a':
                 case 'A':
                     this.keys.left = true;
-                    this.keys.a = true;
                     if (this.state === 'character-select') {
                         this.characterSystem.selectPreviousCharacter();
                     }
@@ -76,7 +73,6 @@ class Game {
                 case 'd':
                 case 'D':
                     this.keys.right = true;
-                    this.keys.d = true;
                     if (this.state === 'character-select') {
                         this.characterSystem.selectNextCharacter();
                     }
@@ -110,7 +106,32 @@ class Game {
                     break;
             }
         });
-        window.addEventListener('keyup', (e) => this.keys[e.key] = false);
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    this.keys.up = false;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    this.keys.down = false;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    this.keys.left = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    this.keys.right = false;
+                    break;
+            }
+        });
+        
         window.addEventListener('resize', () => this.resizeCanvas());
         window.addEventListener('click', (e) => this.handleClick(e));
     }
@@ -1165,10 +1186,12 @@ class Game {
         this.player.update();
 
         // Movimiento del jugador
-        if (this.keys['ArrowLeft'] || this.keys['a']) this.player.move(-1, 0);
-        if (this.keys['ArrowRight'] || this.keys['d']) this.player.move(1, 0);
-        if (this.keys['ArrowUp'] || this.keys['w']) this.player.move(0, -1);
-        if (this.keys['ArrowDown'] || this.keys['s']) this.player.move(0, 1);
+        const moveX = (this.keys.right ? 1 : 0) - (this.keys.left ? 1 : 0);
+        const moveY = (this.keys.down ? 1 : 0) - (this.keys.up ? 1 : 0);
+        
+        if (moveX !== 0 || moveY !== 0) {
+            this.player.move(moveX, moveY);
+        }
 
         // Ataque automático
         this.player.attack(this.enemies);
