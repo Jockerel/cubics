@@ -4,12 +4,60 @@ export default class ChestEnemy extends Enemy {
     constructor(x, y) {
         super(x, y, {
             type: 'chest',
-            size: 40,
-            speed: 3,
+            size: 30,
+            speed: 1.5,
             health: 200,
-            color: '#8B4513',
-            damage: 25
+            maxHealth: 200,
+            color: '#DAA520',
+            damage: 0,
+            canCollide: false
         });
+        
+        // Propiedades para movimiento aleatorio
+        this.directionChangeTimer = 0;
+        this.maxDirectionChangeTime = 120; // Cambiar dirección cada 2 segundos
+        this.currentAngle = Math.random() * Math.PI * 2; // Ángulo inicial aleatorio
+    }
+
+    // Sobrescribir el método de movimiento para que sea aleatorio
+    moveTowardsPlayer(player) {
+        // Reducir timer de cambio de dirección
+        this.directionChangeTimer++;
+        
+        // Cambiar dirección aleatoriamente cada cierto tiempo
+        if (this.directionChangeTimer >= this.maxDirectionChangeTime) {
+            this.currentAngle = Math.random() * Math.PI * 2;
+            this.directionChangeTimer = 0;
+        }
+        
+        // Calcular nueva posición según el ángulo actual
+        const dx = Math.cos(this.currentAngle) * this.speed;
+        const dy = Math.sin(this.currentAngle) * this.speed;
+        
+        // Actualizar posición
+        this.x += dx;
+        this.y += dy;
+        
+        // Mantener dentro de los límites del canvas
+        const canvas = window.game ? window.game.canvas : null;
+        if (canvas) {
+            // Rebotar en los bordes
+            if (this.x < this.size/2) {
+                this.x = this.size/2;
+                this.currentAngle = Math.PI - this.currentAngle;
+            } else if (this.x > canvas.width - this.size/2) {
+                this.x = canvas.width - this.size/2;
+                this.currentAngle = Math.PI - this.currentAngle;
+            }
+            
+            if (this.y < this.size/2) {
+                this.y = this.size/2;
+                this.currentAngle = -this.currentAngle;
+            } else if (this.y > canvas.height - this.size/2) {
+                this.y = canvas.height - this.size/2;
+                this.currentAngle = -this.currentAngle;
+            }
+        }
     }
 
     draw(ctx) {
@@ -20,7 +68,7 @@ export default class ChestEnemy extends Enemy {
         ctx.shadowBlur = 8;
         ctx.shadowOffsetY = 4;
 
-        // Cuerpo del cofre (marrón)
+        // Base del cofre
         const gradient = ctx.createLinearGradient(
             this.x, this.y - this.size,
             this.x, this.y + this.size
@@ -28,19 +76,18 @@ export default class ChestEnemy extends Enemy {
         gradient.addColorStop(0, '#8B4513');
         gradient.addColorStop(1, '#654321');
         
-        // Base del cofre
         ctx.fillStyle = gradient;
         ctx.fillRect(this.x - this.size/2, this.y - this.size/3, this.size, this.size/1.5);
-
+        
         // Tapa del cofre
         ctx.beginPath();
         ctx.moveTo(this.x - this.size/2, this.y - this.size/3);
         ctx.lineTo(this.x + this.size/2, this.y - this.size/3);
-        ctx.lineTo(this.x + this.size/2, this.y - this.size/1.5);
-        ctx.lineTo(this.x - this.size/2, this.y - this.size/1.5);
+        ctx.lineTo(this.x + this.size/2, this.y - this.size/1.2);
+        ctx.lineTo(this.x - this.size/2, this.y - this.size/1.2);
         ctx.closePath();
         ctx.fill();
-
+        
         // Detalles dorados
         ctx.fillStyle = '#FFD700';
         // Bisagras
@@ -49,36 +96,14 @@ export default class ChestEnemy extends Enemy {
         
         // Cerradura
         ctx.beginPath();
-        ctx.arc(this.x, this.y - this.size/4, this.size/8, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y - this.size/4, this.size/6, 0, Math.PI * 2);
         ctx.fill();
-
-        // Mejillas rosadas
-        ctx.fillStyle = 'rgba(255, 182, 193, 0.5)';
-        ctx.beginPath();
-        ctx.arc(this.x - this.size/3, this.y, this.size/6, 0, Math.PI * 2);
-        ctx.arc(this.x + this.size/3, this.y, this.size/6, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Ojos
-        const eyeSize = this.size * 0.08;
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(this.x - this.size/5, this.y - this.size/10, eyeSize, 0, Math.PI * 2);
-        ctx.arc(this.x + this.size/5, this.y - this.size/10, eyeSize, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Boca
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y + this.size/10, this.size/10, 0, Math.PI);
-        ctx.stroke();
         
         this.drawHealthBar(ctx);
         ctx.restore();
     }
     
-    // Cuando muere, no se cuenta como enemigo normal
+    // Cuando muere, devolver 'chest' para generar el coleccionable
     takeDamage(amount) {
         this.health -= amount;
         this.isBlinking = true;

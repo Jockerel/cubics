@@ -49,10 +49,6 @@ export default class Enemy {
     }
 
     moveTowardsPlayer(player) {
-        if (this.collisionCooldown > 0) {
-            this.collisionCooldown--;
-        }
-        
         const dx = player.x - this.x;
         const dy = player.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -89,7 +85,13 @@ export default class Enemy {
         this.health -= amount;
         this.isBlinking = true;
         this.blinkTimer = 5;
-        return this.health <= 0;
+        
+        // Retornar el tipo de enemigo cuando muere
+        if (this.health <= 0) {
+            return this.type;
+        }
+        
+        return false;
     }
 
     update(player) {
@@ -99,6 +101,11 @@ export default class Enemy {
             if (this.blinkTimer <= 0) {
                 this.isBlinking = false;
             }
+        }
+        
+        // Reducir el tiempo de enfriamiento de colisión
+        if (this.collisionCooldown > 0) {
+            this.collisionCooldown--;
         }
         
         // Mover hacia el jugador

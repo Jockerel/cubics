@@ -230,24 +230,37 @@ export default class Player {
         }
     }
 
-    takeDamage(damage) {
-        // Calcular reducción de daño por armadura
-        const damageReduction = this.stats.armor / (this.stats.armor + 100);
-        const actualDamage = damage * (1 - damageReduction);
-        
-        // Calcular probabilidad de esquivar
+    takeDamage(amount) {
+        // Verificar si hay esquiva basada en agilidad
         if (Math.random() * 100 < this.stats.agility) {
-            return { damage: 0, type: 'miss' }; // Daño esquivado
+            return { damage: 0, type: 'miss', gameOver: false };
         }
         
-        // Aplicar el daño a la vida actual
+        // Reducir el daño según la armadura
+        const damageReduction = this.stats.armor / (this.stats.armor + 100);
+        const actualDamage = amount * (1 - damageReduction);
+        
+        // Aplicar el daño
         this.stats.health = Math.max(0, this.stats.health - actualDamage);
-        return { damage: actualDamage, type: 'received' };
+        this.isBlinking = true;
+        this.blinkTimer = 10;
+        
+        // Verificar si el jugador ha muerto
+        if (this.stats.health <= 0) {
+            return { damage: actualDamage, type: 'normal', gameOver: true };
+        }
+        
+        return { damage: actualDamage, type: 'normal', gameOver: false };
     }
 
     update() {
         // Regeneración de vida
         this.stats.health = Math.min(this.stats.maxHealth, this.stats.health + this.stats.healthRegen);
+
+        // Reducir el contador de enfriamiento de colisión
+        if (this.collisionCooldown > 0) {
+            this.collisionCooldown--;
+        }
 
         // Actualizar proyectiles
         this.projectiles.forEach(proj => {
