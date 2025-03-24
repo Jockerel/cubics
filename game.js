@@ -476,39 +476,86 @@ class Game {
         this.ctx.lineTo(x + panelWidth/2 - 40, y + 110);
         this.ctx.stroke();
 
+        // Calcular las mejoras específicas para el personaje actual
+        const getImprovementText = (stat) => {
+            // Si el personaje no puede mejorar esta estadística, retornar texto vacío
+            if (!this.canPlayerUpgradeStat(stat)) {
+                return '';
+            }
+            
+            switch(stat) {
+                case 'health':
+                    if (this.player.name === 'Velocista') {
+                        return `+${4 * this.player.evolutionMultipliers.health}`;
+                    } else if (this.player.name === 'Viejo') {
+                        return `+${12 * this.player.evolutionMultipliers.health}`;
+                    } else {
+                        return `+${8 * this.player.evolutionMultipliers.health}`;
+                    }
+                case 'strength':
+                    return `+${1.5 * this.player.evolutionMultipliers.strength}`;
+                case 'armor':
+                    return `+${1.5}`;
+                case 'agility':
+                    if (this.player.name === 'Fantasma') {
+                        return `+${6 * this.player.evolutionMultipliers.agility}%`;
+                    } else {
+                        return `+${0.8 * this.player.evolutionMultipliers.agility}%`;
+                    }
+                case 'attackSpeed':
+                    return `+${0.15 * this.player.evolutionMultipliers.attackSpeed}`;
+                case 'critChance':
+                    return `+${1.5 * this.player.evolutionMultipliers.critChance}%`;
+                case 'critDamage':
+                    return `+${8 * this.player.evolutionMultipliers.critDamage}%`;
+                case 'healthRegen':
+                    return `+${0.05 * this.player.evolutionMultipliers.healthRegen}/s`;
+                case 'lifeSteal':
+                    if (this.player.name === 'Vampiro') {
+                        return `+${1 * this.player.evolutionMultipliers.lifeSteal}%`;
+                    } else {
+                        return `+${0.8 * this.player.evolutionMultipliers.lifeSteal}%`;
+                    }
+                case 'range':
+                    if (this.player.name === 'Francotirador') {
+                        return `+${8 * this.player.evolutionMultipliers.range}`;
+                    } else {
+                        return `+${4 * this.player.evolutionMultipliers.range}`;
+                    }
+                case 'moveSpeed':
+                    if (this.player.name === 'Velocista') {
+                        return `+${0.5 * this.player.evolutionMultipliers.moveSpeed}`;
+                    } else {
+                        return `+${0.25 * this.player.evolutionMultipliers.moveSpeed}`;
+                    }
+                default:
+                    return '';
+            }
+        };
+
         // Lista de estadísticas con botones de mejora
         const stats = [
             { label: 'Nivel', value: this.player.level, stat: null },
             { label: 'Experiencia', value: `${this.player.experience}/${this.player.experienceToNextLevel}`, stat: null },
-            { label: 'Vida', value: `${Math.floor(this.player.stats.health)}/${this.player.stats.maxHealth}`, stat: 'health', 
-              improvement: `+${8 * this.player.evolutionMultipliers.health}` },
-            { label: 'Fuerza', value: this.player.stats.strength, stat: 'strength',
-              improvement: `+${1.5 * this.player.evolutionMultipliers.strength}` },
-            { label: 'Armadura', value: this.player.stats.armor, stat: 'armor',
-              improvement: `+${1.5}` },
-            { label: 'Agilidad', value: `${this.player.stats.agility}%`, stat: 'agility',
-              improvement: `+${0.8 * this.player.evolutionMultipliers.agility}%` },
-            { label: 'Velocidad de Ataque', value: this.player.stats.attackSpeed.toFixed(1), stat: 'attackSpeed',
-              improvement: `+${0.15 * this.player.evolutionMultipliers.attackSpeed}` },
-            { label: 'Probabilidad de Crítico', value: `${this.player.stats.critChance}%`, stat: 'critChance',
-              improvement: `+${1.5 * this.player.evolutionMultipliers.critChance}%` },
-            { label: 'Daño Crítico', value: `${this.player.stats.critDamage}%`, stat: 'critDamage',
-              improvement: `+${8 * this.player.evolutionMultipliers.critDamage}%` },
-            { label: 'Regeneración de Vida', value: `${this.player.stats.healthRegen}/s`, stat: 'healthRegen',
-              improvement: `+${0.05 * this.player.evolutionMultipliers.healthRegen}/s` },
-            { label: 'Robo de Vida', value: `${this.player.stats.lifeSteal}%`, stat: 'lifeSteal',
-              improvement: `+${0.8 * this.player.evolutionMultipliers.lifeSteal}%` },
-            { label: 'Alcance', value: this.player.stats.range, stat: 'range',
-              improvement: `+${4 * this.player.evolutionMultipliers.range}` },
-            { label: 'Velocidad de Movimiento', value: this.player.stats.moveSpeed.toFixed(1), stat: 'moveSpeed',
-              improvement: `+${0.25 * this.player.evolutionMultipliers.moveSpeed}` }
+            { label: 'Vida', value: `${Math.floor(this.player.stats.health)}/${this.player.stats.maxHealth}`, stat: 'health' },
+            { label: 'Fuerza', value: this.player.stats.strength, stat: 'strength' },
+            { label: 'Armadura', value: this.player.stats.armor, stat: 'armor' },
+            { label: 'Agilidad', value: `${this.player.stats.agility}%`, stat: 'agility' },
+            { label: 'Velocidad de Ataque', value: this.player.stats.attackSpeed.toFixed(1), stat: 'attackSpeed' },
+            { label: 'Probabilidad de Crítico', value: `${this.player.stats.critChance}%`, stat: 'critChance' },
+            { label: 'Daño Crítico', value: `${this.player.stats.critDamage}%`, stat: 'critDamage' },
+            { label: 'Regeneración de Vida', value: `${this.player.stats.healthRegen}/s`, stat: 'healthRegen' },
+            { label: 'Robo de Vida', value: `${this.player.stats.lifeSteal}%`, stat: 'lifeSteal' },
+            { label: 'Alcance', value: this.player.stats.range, stat: 'range' },
+            { label: 'Velocidad de Movimiento', value: this.player.stats.moveSpeed.toFixed(1), stat: 'moveSpeed' }
         ];
 
         stats.forEach((stat, index) => {
             const yPos = y + 140 + index * 40;
+            const canUpgrade = stat.stat ? this.canPlayerUpgradeStat(stat.stat) : false;
             
-            // Estadística
-            this.ctx.fillStyle = '#ffffff';
+            // Estadística (en gris si no se puede mejorar)
+            this.ctx.fillStyle = (stat.stat && !canUpgrade) ? '#888888' : '#ffffff';
             this.ctx.fillText(`${stat.label}: ${stat.value}`, x + 40, yPos);
             
             // Botón de mejora si la estadística puede mejorarse
@@ -516,20 +563,27 @@ class Game {
                 const buttonX = x + 350;
                 const buttonY = yPos - 20;
                 
-                // Fondo del botón con gradiente
+                // Fondo del botón con gradiente (gris si no se puede mejorar)
                 const buttonGradient = this.ctx.createLinearGradient(buttonX, buttonY, buttonX + 35, buttonY + 30);
-                buttonGradient.addColorStop(0, '#4CAF50');
-                buttonGradient.addColorStop(1, '#45a049');
+                
+                if (canUpgrade) {
+                    buttonGradient.addColorStop(0, '#4CAF50');
+                    buttonGradient.addColorStop(1, '#45a049');
+                } else {
+                    buttonGradient.addColorStop(0, '#888888');
+                    buttonGradient.addColorStop(1, '#666666');
+                }
+                
                 this.ctx.fillStyle = buttonGradient;
                 this.ctx.fillRect(buttonX, buttonY, 35, 30);
                 
                 // Borde del botón
-                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.strokeStyle = canUpgrade ? '#ffffff' : '#aaaaaa';
                 this.ctx.lineWidth = 2;
                 this.ctx.strokeRect(buttonX, buttonY, 35, 30);
                 
                 // Símbolo de mejora
-                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fillStyle = canUpgrade ? '#ffffff' : '#aaaaaa';
                 this.ctx.font = 'bold 24px Arial';
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText('+', buttonX + 17, buttonY + 22);
@@ -537,8 +591,13 @@ class Game {
                 // Texto de mejora
                 this.ctx.font = '18px Arial';
                 this.ctx.textAlign = 'left';
-                this.ctx.fillStyle = '#4CAF50';
-                this.ctx.fillText(stat.improvement, buttonX + 45, buttonY + 22);
+                this.ctx.fillStyle = canUpgrade ? '#4CAF50' : '#888888';
+                
+                // Mostrar el texto de mejora específico para este personaje
+                if (stat.stat) {
+                    const improvementText = getImprovementText(stat.stat);
+                    this.ctx.fillText(improvementText, buttonX + 45, buttonY + 22);
+                }
             }
         });
 
@@ -570,28 +629,39 @@ class Game {
 
         bodyParts.forEach((part, index) => {
             const yPos = y + 140 + index * 80;
+            const canEvolve = this.canPlayerEvolvePart(part.part);
             
-            // Fondo de la tarjeta de evolución
-            this.ctx.fillStyle = this.player.evolvedParts[part.part] ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 255, 255, 0.05)';
+            // Fondo de la tarjeta de evolución (gris si no se puede evolucionar)
+            this.ctx.fillStyle = this.player.evolvedParts[part.part] 
+                ? 'rgba(76, 175, 80, 0.1)' 
+                : (canEvolve ? 'rgba(255, 255, 255, 0.05)' : 'rgba(100, 100, 100, 0.05)');
             this.ctx.fillRect(rightPanelX - 10, yPos - 25, panelWidth/2 - 50, 70);
             
-            // Icono
+            // Icono (gris si no se puede evolucionar)
             this.ctx.font = '32px Arial';
-            this.ctx.fillStyle = this.player.evolvedParts[part.part] ? '#4CAF50' : '#ffffff';
+            if (this.player.evolvedParts[part.part]) {
+                this.ctx.fillStyle = '#4CAF50';
+            } else {
+                this.ctx.fillStyle = canEvolve ? '#ffffff' : '#888888';
+            }
             this.ctx.fillText(part.icon, rightPanelX, yPos);
             
-            // Nombre de la parte
+            // Nombre de la parte (gris si no se puede evolucionar)
             this.ctx.font = 'bold 24px Arial';
-            this.ctx.fillStyle = this.player.evolvedParts[part.part] ? '#4CAF50' : '#ffffff';
+            if (this.player.evolvedParts[part.part]) {
+                this.ctx.fillStyle = '#4CAF50';
+            } else {
+                this.ctx.fillStyle = canEvolve ? '#ffffff' : '#888888';
+            }
             this.ctx.fillText(part.name, rightPanelX + 50, yPos);
             
-            // Beneficios
+            // Beneficios (gris si no se puede evolucionar)
             this.ctx.font = '18px Arial';
-            this.ctx.fillStyle = '#aaaaaa';
+            this.ctx.fillStyle = canEvolve ? '#aaaaaa' : '#666666';
             this.ctx.fillText(part.benefits, rightPanelX + 50, yPos + 30);
             
             // Botón de evolución si está disponible
-            if (!this.player.evolvedParts[part.part] && this.player.evolutionPoints > 0) {
+            if (!this.player.evolvedParts[part.part] && this.player.evolutionPoints > 0 && canEvolve) {
                 const buttonX = rightPanelX + 300;
                 const buttonY = yPos - 25;
                 const buttonWidth = 120;
@@ -1535,32 +1605,106 @@ class Game {
 
     calculateNewStatValue(stat) {
         const currentValue = this.getStatValue(stat);
+        
+        // Si el personaje tiene restricciones para esta estadística, no mostrar aumento
+        if (!this.canPlayerUpgradeStat(stat)) {
+            return currentValue;
+        }
+        
+        // Calcular el valor según el tipo de personaje específico
         switch(stat) {
             case 'health':
-                return currentValue + (8 * this.player.evolutionMultipliers.health);
+                if (this.player.name === 'Velocista') {
+                    return currentValue + 4 * this.player.evolutionMultipliers.health;
+                } else if (this.player.name === 'Viejo') {
+                    return currentValue + 12 * this.player.evolutionMultipliers.health;
+                } else {
+                    return currentValue + 8 * this.player.evolutionMultipliers.health;
+                }
             case 'strength':
-                return currentValue + (1.5 * this.player.evolutionMultipliers.strength);
+                return currentValue + 1.5 * this.player.evolutionMultipliers.strength;
             case 'armor':
                 return currentValue + 1.5;
             case 'agility':
-                return currentValue + (0.8 * this.player.evolutionMultipliers.agility);
+                if (this.player.name === 'Fantasma') {
+                    const increase = 6 * this.player.evolutionMultipliers.agility;
+                    // Verificar el límite de 75%
+                    return Math.min(currentValue + increase, 75);
+                } else {
+                    return currentValue + 0.8 * this.player.evolutionMultipliers.agility;
+                }
             case 'attackSpeed':
-                return currentValue + (0.15 * this.player.evolutionMultipliers.attackSpeed);
+                return currentValue + 0.15 * this.player.evolutionMultipliers.attackSpeed;
             case 'critChance':
-                return currentValue + (1.5 * this.player.evolutionMultipliers.critChance);
+                return currentValue + 1.5 * this.player.evolutionMultipliers.critChance;
             case 'critDamage':
-                return currentValue + (8 * this.player.evolutionMultipliers.critDamage);
+                return currentValue + 8 * this.player.evolutionMultipliers.critDamage;
             case 'healthRegen':
-                return currentValue + (0.05 * this.player.evolutionMultipliers.healthRegen); // Reducido de 0.08 a 0.05
+                return currentValue + 0.05 * this.player.evolutionMultipliers.healthRegen;
             case 'lifeSteal':
-                return currentValue + (0.8 * this.player.evolutionMultipliers.lifeSteal);
+                if (this.player.name === 'Vampiro') {
+                    return currentValue + 1 * this.player.evolutionMultipliers.lifeSteal;
+                } else {
+                    return currentValue + 0.8 * this.player.evolutionMultipliers.lifeSteal;
+                }
             case 'range':
-                return currentValue + (4 * this.player.evolutionMultipliers.range);
+                if (this.player.name === 'Francotirador') {
+                    return currentValue + 8 * this.player.evolutionMultipliers.range;
+                } else {
+                    return currentValue + 4 * this.player.evolutionMultipliers.range;
+                }
             case 'moveSpeed':
-                return currentValue + (0.25 * this.player.evolutionMultipliers.moveSpeed);
+                if (this.player.name === 'Velocista') {
+                    return currentValue + 0.5 * this.player.evolutionMultipliers.moveSpeed;
+                } else {
+                    return currentValue + 0.25 * this.player.evolutionMultipliers.moveSpeed;
+                }
             default:
                 return currentValue;
         }
+    }
+
+    // Método para verificar si el personaje puede mejorar una estadística
+    canPlayerUpgradeStat(stat) {
+        // Restricciones específicas por personaje
+        switch(this.player.name) {
+            case 'Vampiro':
+                if (stat === 'healthRegen' || stat === 'armor') {
+                    return false;
+                }
+                break;
+            case 'Fantasma':
+                // Verificar si la agilidad ya está en su límite máximo (75%)
+                if (stat === 'agility' && this.player.stats.agility >= 75) {
+                    return false;
+                }
+                break;
+            default:
+                // No hay restricciones para otros personajes
+                break;
+        }
+        return true;
+    }
+
+    // Método para verificar si el personaje puede evolucionar una parte
+    canPlayerEvolvePart(part) {
+        // Restricciones específicas por personaje
+        switch(this.player.name) {
+            case 'Viejo':
+                if (part === 'feet') {
+                    return false;
+                }
+                break;
+            case 'Francotirador':
+                if (part === 'head' || part === 'hands') {
+                    return false;
+                }
+                break;
+            default:
+                // No hay restricciones para otros personajes
+                break;
+        }
+        return true;
     }
 
     confirmStatImprovement(stat) {
