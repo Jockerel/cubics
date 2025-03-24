@@ -1,5 +1,6 @@
 // Importar la clase Player
 import Player from './player/Player.js';
+import CharacterSystem from './player/CharacterSystem.js';
 // Importar los enemigos
 import { createEnemy } from './enemies/index.js';
 
@@ -10,7 +11,7 @@ class Game {
         document.body.appendChild(this.canvas);
         this.resizeCanvas();
         
-        this.state = 'menu';
+        this.state = 'menu'; // menu, character-select, playing, gameover, paused
         this.player = null;
         this.enemies = [];
         this.wave = 1;
@@ -32,6 +33,8 @@ class Game {
         this.damageNumbers = [];
         this.hearts = [];
         this.particles = [];
+        this.characterSystem = new CharacterSystem();
+        this.characterSelectionUI = null;
     }
 
     resizeCanvas() {
@@ -41,23 +44,70 @@ class Game {
 
     setupEventListeners() {
         window.addEventListener('keydown', (e) => {
-            this.keys[e.key] = true;
-            if (e.key === 'Escape' && this.state === 'playing') {
-                this.state = 'paused';
-            } else if (e.key === 'Escape' && this.state === 'paused') {
-                this.state = 'playing';
-            } else if (e.key === 'Escape' && this.devMode) {
-                this.devMode = false;
-            }
-            // Manejo de teclas para modo desarrollador
-            if (this.devMode) {
-                if (e.key === 'ArrowUp') {
-                    this.wave = Math.min(25, this.wave + 1);
-                } else if (e.key === 'ArrowDown') {
-                    this.wave = Math.max(1, this.wave - 1);
-                } else if (e.key === 'Enter') {
-                    this.startGame();
-                }
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    this.keys.up = true;
+                    this.keys.w = true;
+                    if (this.devMode) {
+                        this.wave = Math.min(25, this.wave + 1);
+                    }
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    this.keys.down = true;
+                    this.keys.s = true;
+                    if (this.devMode) {
+                        this.wave = Math.max(1, this.wave - 1);
+                    }
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    this.keys.left = true;
+                    this.keys.a = true;
+                    if (this.state === 'character-select') {
+                        this.characterSystem.selectPreviousCharacter();
+                    }
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    this.keys.right = true;
+                    this.keys.d = true;
+                    if (this.state === 'character-select') {
+                        this.characterSystem.selectNextCharacter();
+                    }
+                    break;
+                case 'Enter':
+                    if (this.state === 'character-select') {
+                        this.startGame();
+                    } else if (this.devMode) {
+                        this.startGame();
+                    }
+                    break;
+                case 'Escape':
+                    if (this.state === 'character-select') {
+                        this.state = 'menu';
+                    } else if (this.state === 'playing') {
+                        this.state = 'paused';
+                    } else if (this.state === 'paused') {
+                        this.state = 'playing';
+                    } else if (this.devMode) {
+                        this.devMode = false;
+                    }
+                    break;
+                case ' ':
+                    if (this.state === 'menu') {
+                        this.state = 'character-select';
+                    } else if (this.state === 'character-select') {
+                        this.startGame();
+                    } else if (this.state === 'gameover') {
+                        this.state = 'menu';
+                    }
+                    break;
             }
         });
         window.addEventListener('keyup', (e) => this.keys[e.key] = false);
@@ -71,18 +121,48 @@ class Game {
         const y = e.clientY - rect.top;
 
         if (this.state === 'menu') {
-            // Botón de inicio
-            if (this.isPointInButton(x, y, this.canvas.width/2 - 100, this.canvas.height/2, 200, 50)) {
-                this.startGame();
+            // Opciones del menú
+            const buttonWidth = 200;
+            const buttonHeight = 50;
+            const buttonSpacing = 100;
+            const buttonY = this.canvas.height/2;
+            
+            // Comprobar clic en el botón de iniciar juego
+            if (this.isPointInButton(x, y, 
+                this.canvas.width/2 - buttonWidth/2, buttonY, buttonWidth, buttonHeight)) {
+                // Cambiar a la pantalla de selección de personaje en lugar de iniciar directamente
+                this.state = 'character-select';
+                return;
             }
-            // Botón de instrucciones
-            if (this.isPointInButton(x, y, this.canvas.width/2 - 100, this.canvas.height/2 + 100, 200, 50)) {
+            
+            // Comprobar clic en el botón de instrucciones
+            if (this.isPointInButton(x, y, 
+                this.canvas.width/2 - buttonWidth/2, buttonY + buttonSpacing, buttonWidth, buttonHeight)) {
                 this.showInstructions = !this.showInstructions;
+                this.devMode = false;
+                return;
             }
-            // Botón de modo desarrollador
-            if (this.isPointInButton(x, y, this.canvas.width/2 - 100, this.canvas.height/2 + 200, 200, 50)) {
+            
+            // Comprobar clic en el botón de modo desarrollador
+            if (this.isPointInButton(x, y, 
+                this.canvas.width/2 - buttonWidth/2, buttonY + buttonSpacing * 2, buttonWidth, buttonHeight)) {
                 this.devMode = !this.devMode;
                 this.showInstructions = false;
+                return;
+            }
+        } else if (this.state === 'character-select') {
+            // Manejar clic en la pantalla de selección de personaje
+            if (this.characterSelectionUI) {
+                const action = this.characterSystem.handleCharacterSelectionClick(
+                    x, y, this.characterSelectionUI
+                );
+                
+                if (action === 'select') {
+                    // Iniciar el juego con el personaje seleccionado
+                    this.startGame();
+                }
+                
+                // Si es navegación, la UI se actualizará en el próximo frame
             }
         } else if (this.state === 'paused') {
             const panelWidth = 1000;
@@ -192,72 +272,6 @@ class Game {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(text, x + width/2, y + height/2);
-    }
-
-    startGame() {
-        this.state = 'playing';
-        this.player = new Player(this.canvas.width/2, this.canvas.height/2);
-        
-        // Ajustar el nivel del jugador según la oleada seleccionada
-        if (this.devMode) {
-            // Calcular el nivel basado en la oleada (aproximadamente 0.5 niveles por oleada)
-            const targetLevel = Math.floor(this.wave * 0.5) + 1;
-            
-            // Ajustar directamente el nivel y la experiencia
-            this.player.level = targetLevel;
-            this.player.experience = 0;
-            this.player.experienceToNextLevel = 100;
-            
-            // Ajustar las estadísticas base según el nivel
-            const baseStats = {
-                health: 100,
-                maxHealth: 100,
-                strength: 25,
-                armor: 5,
-                agility: 5,
-                attackSpeed: 1,
-                critChance: 5,
-                critDamage: 150,
-                healthRegen: 0.02,
-                lifeSteal: 0,
-                range: 115,
-                moveSpeed: 5
-            };
-
-            // Calcular multiplicadores basados en el nivel
-            const levelMultiplier = 1 + (targetLevel - 1) * 0.1; // 10% de aumento por nivel
-            
-            // Aplicar multiplicadores a las estadísticas
-            this.player.stats = {
-                health: Math.floor(baseStats.health * levelMultiplier),
-                maxHealth: Math.floor(baseStats.maxHealth * levelMultiplier),
-                strength: Math.floor(baseStats.strength * levelMultiplier),
-                armor: Math.floor(baseStats.armor * levelMultiplier),
-                agility: Math.floor(baseStats.agility * levelMultiplier),
-                attackSpeed: baseStats.attackSpeed * levelMultiplier,
-                critChance: baseStats.critChance * levelMultiplier,
-                critDamage: baseStats.critDamage * levelMultiplier,
-                healthRegen: baseStats.healthRegen * levelMultiplier,
-                lifeSteal: baseStats.lifeSteal * levelMultiplier,
-                range: Math.floor(baseStats.range * levelMultiplier),
-                moveSpeed: baseStats.moveSpeed * levelMultiplier
-            };
-
-            // Ajustar valores calculados
-            this.player.attackRange = this.player.stats.range;
-            this.player.attackCooldown = 0;
-            this.player.maxAttackCooldown = 60 / this.player.stats.attackSpeed;
-            
-            // Ajustar la salud actual al máximo
-            this.player.stats.health = this.player.stats.maxHealth;
-        }
-        
-        this.enemies = [];
-        this.wave = this.devMode ? this.wave : 1;
-        this.score = 0;
-        this.hearts = [];
-        this.particles = [];
-        this.startNextWave();
     }
 
     drawMenu() {
@@ -594,11 +608,71 @@ class Game {
         }
     }
 
+    drawCharacterSelection() {
+        // Delegar la renderización al sistema de personajes y guardar la referencia a la UI
+        this.characterSelectionUI = this.characterSystem.drawCharacterSelection(this.ctx, this.canvas);
+    }
+
+    startGame() {
+        this.state = 'playing';
+        
+        // Crear el personaje seleccionado en lugar del genérico
+        this.player = this.characterSystem.createSelectedCharacter(
+            this.canvas.width/2, 
+            this.canvas.height/2
+        );
+        
+        // Ajustar el nivel del jugador según la oleada seleccionada en modo desarrollador
+        if (this.devMode) {
+            // Calcular el nivel basado en la oleada (aproximadamente 0.5 niveles por oleada)
+            const targetLevel = Math.floor(this.wave * 0.5) + 1;
+            
+            // Ajustar directamente el nivel y la experiencia
+            this.player.level = targetLevel;
+            this.player.experience = 0;
+            this.player.experienceToNextLevel = 100;
+            
+            // Calcular y aplicar multiplicadores basados en el nivel
+            const levelMultiplier = 1 + (targetLevel - 1) * 0.1; // 10% de aumento por nivel
+            
+            // Guardar las estadísticas originales
+            const originalStats = { ...this.player.stats };
+            
+            // Aplicar multiplicadores a las estadísticas
+            Object.keys(originalStats).forEach(stat => {
+                if (typeof originalStats[stat] === 'number') {
+                    this.player.stats[stat] = originalStats[stat] * levelMultiplier;
+                    
+                    // Redondear valores enteros
+                    if (stat !== 'attackSpeed' && stat !== 'healthRegen' && 
+                        stat !== 'lifeSteal' && stat !== 'critChance' && 
+                        stat !== 'critDamage' && stat !== 'moveSpeed') {
+                        this.player.stats[stat] = Math.floor(this.player.stats[stat]);
+                    }
+                }
+            });
+            
+            // Actualizar valores calculados y asegurarse de que la salud esté al máximo
+            this.player.attackRange = this.player.stats.range;
+            this.player.maxAttackCooldown = 60 / this.player.stats.attackSpeed;
+            this.player.stats.health = this.player.stats.maxHealth;
+        }
+        
+        this.enemies = [];
+        this.wave = this.devMode ? this.wave : 1;
+        this.score = 0;
+        this.hearts = [];
+        this.particles = [];
+        this.startNextWave();
+    }
+
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         if (this.state === 'menu') {
             this.drawMenu();
+        } else if (this.state === 'character-select') {
+            this.drawCharacterSelection();
         } else if (this.state === 'playing') {
             // Dibujar jugador y enemigos
             this.player.draw(this.ctx);

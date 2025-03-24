@@ -3,6 +3,7 @@ export default class Player {
         this.x = x;
         this.y = y;
         this.name = "Equilibrado";
+        this.description = "Un personaje con estadísticas balanceadas, perfecto para principiantes.";
         this.size = 30;
         
         // Estadísticas base
