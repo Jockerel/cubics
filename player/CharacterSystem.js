@@ -2,6 +2,11 @@ import Player from './Player.js';
 import Tanque from './tipos/Tanque.js';
 import Asesino from './tipos/Asesino.js';
 import Mago from './tipos/Mago.js';
+import Vampiro from './tipos/Vampiro.js';
+import Velocista from './tipos/Velocista.js';
+import Viejo from './tipos/Viejo.js';
+import Fantasma from './tipos/Fantasma.js';
+import Francotirador from './tipos/Francotirador.js';
 
 export default class CharacterSystem {
     constructor() {
@@ -53,6 +58,66 @@ export default class CharacterSystem {
                     defensa: 4
                 },
                 create: (x, y) => new Mago(x, y)
+            },
+            {
+                id: 'vampiro',
+                name: 'Vampiro',
+                description: 'Especialista en robo de vida, pero sin armadura ni regeneración natural.',
+                previewColor: '#8B0000',
+                stats: {
+                    fuerza: 6,
+                    velocidad: 7,
+                    defensa: 2
+                },
+                create: (x, y) => new Vampiro(x, y)
+            },
+            {
+                id: 'velocista',
+                name: 'Velocista',
+                description: 'Alta velocidad y movilidad. La velocidad aumenta su fuerza de ataque.',
+                previewColor: '#00FFFF',
+                stats: {
+                    fuerza: 6,
+                    velocidad: 10,
+                    defensa: 5
+                },
+                create: (x, y) => new Velocista(x, y)
+            },
+            {
+                id: 'viejo',
+                name: 'Viejo',
+                description: 'Sabio anciano con gran resistencia, pero lenta movilidad y limitaciones físicas.',
+                previewColor: '#808080',
+                stats: {
+                    fuerza: 8,
+                    velocidad: 3,
+                    defensa: 9
+                },
+                create: (x, y) => new Viejo(x, y)
+            },
+            {
+                id: 'fantasma',
+                name: 'Fantasma',
+                description: 'Etéreo y ágil, difícil de golpear pero muy vulnerable al daño.',
+                previewColor: '#E6E6FA',
+                stats: {
+                    fuerza: 5,
+                    velocidad: 9,
+                    defensa: 0
+                },
+                create: (x, y) => new Fantasma(x, y)
+            },
+            {
+                id: 'francotirador',
+                name: 'Francotirador',
+                description: 'Especialista en ataques a larga distancia con gran precisión.',
+                previewColor: '#2F4F4F',
+                stats: {
+                    fuerza: 7,
+                    velocidad: 5,
+                    defensa: 6
+                },
+                create: (x, y) => new Francotirador(x, y)
             }
         ];
         
@@ -212,7 +277,6 @@ export default class CharacterSystem {
         ctx.shadowColor = this.getSelectedCharacter().previewColor;
         ctx.shadowBlur = 10 + 5 * Math.sin(Date.now() / 300);
         ctx.stroke();
-        ctx.restore();
         
         // Personaje actual y transición
         const currentChar = this.getSelectedCharacter();
@@ -271,208 +335,618 @@ export default class CharacterSystem {
         this.drawNavigationArrow(ctx, panelX + 50, panelY + panelHeight/2, 'left');
         this.drawNavigationArrow(ctx, panelX + panelWidth - 50, panelY + panelHeight/2, 'right');
         
+        // Panel inferior con vista previa de todos los personajes
+        const miniPreviewSize = 50;
+        const miniPreviewY = panelY + panelHeight - miniPreviewSize - 20;
+        const totalWidth = this.characters.length * (miniPreviewSize + 10);
+        const startX = panelX + (panelWidth - totalWidth) / 2;
+        
+        // Fondo del panel de selección rápida
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(panelX + 20, miniPreviewY - 10, panelWidth - 40, miniPreviewSize + 20);
+        
+        // Dibujar miniaturas de todos los personajes
+        const miniatures = [];
+        this.characters.forEach((char, index) => {
+            const miniX = startX + index * (miniPreviewSize + 10);
+            
+            // Guardar referencia para interacción
+            miniatures.push({
+                id: char.id,
+                x: miniX,
+                y: miniPreviewY,
+                size: miniPreviewSize,
+                character: char
+            });
+            
+            ctx.save();
+            // Destacar el personaje seleccionado
+            const isSelected = index === this.selectedCharacterIndex;
+            const scale = isSelected ? 1.2 : 1;
+            
+            ctx.translate(miniX + miniPreviewSize/2, miniPreviewY + miniPreviewSize/2);
+            ctx.scale(scale, scale);
+            ctx.translate(-(miniX + miniPreviewSize/2), -(miniPreviewY + miniPreviewSize/2));
+            
+            // Dibujar fondo y borde
+            ctx.fillStyle = char.previewColor;
+            ctx.beginPath();
+            ctx.arc(miniX + miniPreviewSize/2, miniPreviewY + miniPreviewSize/2, 
+                    miniPreviewSize/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            if (isSelected) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(miniX + miniPreviewSize/2, miniPreviewY + miniPreviewSize/2, 
+                        miniPreviewSize/2 + 2, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Texto indicador
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(char.name, miniX + miniPreviewSize/2, miniPreviewY + miniPreviewSize + 15);
+            }
+            
+            ctx.restore();
+            
+            // Dibujar inicial del personaje
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char.name.charAt(0), miniX + miniPreviewSize/2, miniPreviewY + miniPreviewSize/2);
+        });
+        
         // Botón de selección con efecto hover
         const buttonWidth = 240;
         const buttonHeight = 60;
-        const buttonX = (canvas.width - buttonWidth) / 2;
-        const buttonY = panelY + panelHeight + 40;
+        const buttonX = canvas.width/2 - buttonWidth/2;
+        const buttonY = panelY + panelHeight + 30;
         
-        // Fondo del botón con gradiente
+        // Dibujar botón con gradiente
         const buttonGradient = ctx.createLinearGradient(buttonX, buttonY, buttonX, buttonY + buttonHeight);
         buttonGradient.addColorStop(0, '#4CAF50');
-        buttonGradient.addColorStop(1, '#2E7D32');
-        ctx.fillStyle = buttonGradient;
+        buttonGradient.addColorStop(1, '#45a049');
         
-        // Dibujar botón con bordes redondeados
+        ctx.fillStyle = buttonGradient;
         ctx.beginPath();
         ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, 10);
         ctx.fill();
         
-        // Borde del botón con brillo
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        // Borde del botón
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
-        ctx.shadowColor = '#4CAF50';
+        ctx.shadowColor = currentChar.previewColor;
         ctx.shadowBlur = 15;
         ctx.stroke();
         
-        // Texto del botón con sombra
+        // Texto del botón
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 26px Arial';
+        ctx.font = 'bold 24px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetY = 2;
-        ctx.fillText('SELECCIONAR', buttonX + buttonWidth/2, buttonY + buttonHeight/2);
+        ctx.fillText('SELECCIONAR PERSONAJE', buttonX + buttonWidth/2, buttonY + buttonHeight/2);
         
-        // Indicador de navegación
-        ctx.shadowBlur = 0;
-        ctx.font = '18px Arial';
-        ctx.fillText('< Anterior | Siguiente >', canvas.width/2, buttonY + buttonHeight + 30);
-        ctx.fillText('O usa las teclas de dirección', canvas.width/2, buttonY + buttonHeight + 55);
-        
+        // Devolver elementos de UI para interacción
         return {
-            leftArrow: { x: panelX + 50, y: panelY + panelHeight/2, radius: 30 },
-            rightArrow: { x: panelX + panelWidth - 50, y: panelY + panelHeight/2, radius: 30 },
-            selectButton: { x: buttonX, y: buttonY, width: buttonWidth, height: buttonHeight }
+            leftArrow: {
+                x: panelX + 50,
+                y: panelY + panelHeight/2,
+                radius: 30
+            },
+            rightArrow: {
+                x: panelX + panelWidth - 50,
+                y: panelY + panelHeight/2,
+                radius: 30
+            },
+            selectButton: {
+                x: buttonX,
+                y: buttonY,
+                width: buttonWidth,
+                height: buttonHeight
+            },
+            miniatures: miniatures
         };
     }
     
     drawCharacterPreview(ctx, character, x, y, size, isActive) {
         ctx.save();
         
-        // Efecto de brillante alrededor del personaje
+        // Aplicar animación de flotación y escala
+        const floatOffset = isActive ? Math.sin(Date.now() / 500) * 5 : 0;
+        const scaleMultiplier = isActive ? (1 + 0.05 * Math.sin(Date.now() / 800)) : 1;
+        
+        ctx.translate(x, y + floatOffset);
+        ctx.scale(scaleMultiplier, scaleMultiplier);
+        
+        // Efectos de partículas solo para el personaje activo
         if (isActive) {
-            const glowSize = 20 + 5 * Math.sin(Date.now() / 300);
+            // Aura exterior
+            const gradientAura = ctx.createRadialGradient(0, 0, size * 0.6, 0, 0, size * 1.2);
+            gradientAura.addColorStop(0, character.previewColor.replace(')', ', 0.3)').replace('rgb', 'rgba'));
+            gradientAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradientAura;
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Efecto de brillo pulsante
             ctx.shadowColor = character.previewColor;
-            ctx.shadowBlur = glowSize;
+            ctx.shadowBlur = 15 + 5 * Math.sin(Date.now() / 300);
         }
         
-        // Dibujar cubo base
-        ctx.fillStyle = character.previewColor;
-        ctx.fillRect(x - size/2, y - size/2, size, size);
-        
-        // Borde
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x - size/2, y - size/2, size, size);
-        
-        // Personalizar la apariencia según el tipo
+        // Dibujar el personaje según su tipo
         switch(character.id) {
             case 'equilibrado':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
                 // Ojos
                 const eyeSize = size * 0.15;
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(x - size/4, y - size/6, eyeSize, 0, Math.PI * 2);
-                ctx.arc(x + size/4, y - size/6, eyeSize, 0, Math.PI * 2);
+                ctx.arc(-size/4, -size/6, eyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/6, eyeSize, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Brillos en los ojos
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
-                ctx.arc(x - size/4 + eyeSize/2, y - size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
-                ctx.arc(x + size/4 + eyeSize/2, y - size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
+                ctx.arc(-size/4 + eyeSize/2, -size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/4 + eyeSize/2, -size/6 - eyeSize/2, eyeSize/3, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Sonrisa
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(x, y + size/6, size/4, 0, Math.PI);
+                ctx.arc(0, size/6, size/4, 0, Math.PI);
                 ctx.stroke();
                 break;
                 
             case 'tanque':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde del cubo
+                ctx.strokeStyle = '#2c5d8f';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
                 // Ojos más pequeños
                 const tankEyeSize = size * 0.12;
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(x - size/4, y - size/6, tankEyeSize, 0, Math.PI * 2);
-                ctx.arc(x + size/4, y - size/6, tankEyeSize, 0, Math.PI * 2);
+                ctx.arc(-size/4, -size/6, tankEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/6, tankEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-size/4 + tankEyeSize/2, -size/6 - tankEyeSize/2, tankEyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/4 + tankEyeSize/2, -size/6 - tankEyeSize/2, tankEyeSize/3, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Boca seria
                 ctx.strokeStyle = '#000';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(x - size/4, y + size/6);
-                ctx.lineTo(x + size/4, y + size/6);
+                ctx.moveTo(-size/4, size/6);
+                ctx.lineTo(size/4, size/6);
                 ctx.stroke();
                 
                 // Armadura en el pecho
                 ctx.fillStyle = '#2c5d8f';
                 ctx.beginPath();
-                ctx.moveTo(x - size/4, y - size/6 + 5);
-                ctx.lineTo(x + size/4, y - size/6 + 5);
-                ctx.lineTo(x + size/6, y + size/4);
-                ctx.lineTo(x - size/6, y + size/4);
+                ctx.moveTo(-size/4, -size/6 + 5);
+                ctx.lineTo(size/4, -size/6 + 5);
+                ctx.lineTo(size/6, size/4);
+                ctx.lineTo(-size/6, size/4);
                 ctx.closePath();
                 ctx.fill();
                 break;
                 
             case 'asesino':
-                // Forma más delgada
-                ctx.clearRect(x - size/2, y - size/2, size, size);
+                // Cuerpo del cubo
                 ctx.fillStyle = character.previewColor;
-                ctx.fillRect(x - size/2.5, y - size/2, size/1.25, size);
-                ctx.strokeStyle = '#ffffff';
-                ctx.strokeRect(x - size/2.5, y - size/2, size/1.25, size);
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#4B0082';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
                 
                 // Ojos afilados
                 ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.moveTo(x - size/5, y - size/6);
-                ctx.lineTo(x - size/12, y - size/8);
-                ctx.lineTo(x - size/12, y - size/4);
-                ctx.closePath();
+                // Ojo izquierdo
+                ctx.ellipse(-size/4, -size/6, size * 0.08, size * 0.12, Math.PI/4, 0, Math.PI * 2);
+                // Ojo derecho
+                ctx.ellipse(size/4, -size/6, size * 0.08, size * 0.12, -Math.PI/4, 0, Math.PI * 2);
                 ctx.fill();
                 
+                // Brillos en los ojos
+                ctx.fillStyle = '#ff0000';
                 ctx.beginPath();
-                ctx.moveTo(x + size/5, y - size/6);
-                ctx.lineTo(x + size/12, y - size/8);
-                ctx.lineTo(x + size/12, y - size/4);
-                ctx.closePath();
+                ctx.arc(-size/4 + size * 0.04, -size/6 - size * 0.06, size * 0.03, 0, Math.PI * 2);
+                ctx.arc(size/4 + size * 0.04, -size/6 - size * 0.06, size * 0.03, 0, Math.PI * 2);
                 ctx.fill();
                 
-                // Sonrisa malévola
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
+                // Máscara
+                ctx.fillStyle = '#4B0082';
                 ctx.beginPath();
-                ctx.arc(x, y + size/8, size/5, 0, Math.PI);
-                ctx.stroke();
-                
-                // Colmillos
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.moveTo(x - size/8, y + size/8);
-                ctx.lineTo(x - size/10, y + size/5);
-                ctx.lineTo(x - size/12, y + size/8);
-                ctx.closePath();
+                ctx.ellipse(0, -size/6, size/2, size/8, 0, 0, Math.PI * 2);
                 ctx.fill();
                 
+                // Recorte para los ojos en la máscara
+                ctx.globalCompositeOperation = 'destination-out';
                 ctx.beginPath();
-                ctx.moveTo(x + size/8, y + size/8);
-                ctx.lineTo(x + size/10, y + size/5);
-                ctx.lineTo(x + size/12, y + size/8);
-                ctx.closePath();
+                ctx.ellipse(-size/4, -size/6, size * 0.1, size * 0.14, Math.PI/4, 0, Math.PI * 2);
+                ctx.ellipse(size/4, -size/6, size * 0.1, size * 0.14, -Math.PI/4, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
                 break;
                 
             case 'mago':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#A52A2A';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
                 // Sombrero de mago
-                ctx.fillStyle = '#4B0082';
+                ctx.fillStyle = '#A52A2A';
                 ctx.beginPath();
-                ctx.moveTo(x - size/2, y - size/2);
-                ctx.lineTo(x + size/2, y - size/2);
-                ctx.lineTo(x, y - size - 10);
+                ctx.moveTo(-size/2 - 10, -size/4);
+                ctx.lineTo(size/2 + 10, -size/4);
+                ctx.lineTo(0, -size/2 - 30);
                 ctx.closePath();
                 ctx.fill();
                 
-                // Ojos con aspecto sabio
-                const magoEyeSize = size * 0.15;
-                ctx.fillStyle = '#000';
+                // Banda del sombrero
+                ctx.fillStyle = '#DAA520';
                 ctx.beginPath();
-                ctx.arc(x - size/4, y - size/8, magoEyeSize, 0, Math.PI * 2);
-                ctx.arc(x + size/4, y - size/8, magoEyeSize, 0, Math.PI * 2);
+                ctx.rect(-size/2 - 5, -size/4, size + 10, 5);
                 ctx.fill();
                 
-                // Brillos mágicos en los ojos
-                ctx.fillStyle = '#4B0082';
+                // Ojos brillantes
+                const magoEyeSize = size * 0.13;
+                ctx.fillStyle = '#000';
                 ctx.beginPath();
-                ctx.arc(x - size/4 + magoEyeSize/2, y - size/8 - magoEyeSize/2, magoEyeSize/2, 0, Math.PI * 2);
-                ctx.arc(x + size/4 + magoEyeSize/2, y - size/8 - magoEyeSize/2, magoEyeSize/2, 0, Math.PI * 2);
+                ctx.arc(-size/4, -size/8, magoEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/8, magoEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos (brillos mágicos)
+                ctx.fillStyle = '#00FFFF';
+                ctx.beginPath();
+                ctx.arc(-size/4 + magoEyeSize/2, -size/8 - magoEyeSize/2, magoEyeSize/2, 0, Math.PI * 2);
+                ctx.arc(size/4 + magoEyeSize/2, -size/8 - magoEyeSize/2, magoEyeSize/2, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Barba
                 ctx.fillStyle = '#E0E0E0';
                 ctx.beginPath();
-                ctx.moveTo(x - size/6, y + size/8);
-                ctx.lineTo(x + size/6, y + size/8);
-                ctx.lineTo(x, y + size/2);
+                ctx.moveTo(-size/6, size/8);
+                ctx.lineTo(size/6, size/8);
+                ctx.lineTo(0, size/2);
                 ctx.closePath();
                 ctx.fill();
                 break;
+                
+            case 'vampiro':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#500000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
+                // Ojos rojos brillantes
+                const vampEyeSize = size * 0.15;
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(-size/4, -size/6, vampEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/6, vampEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos
+                ctx.fillStyle = '#FF8080';
+                ctx.beginPath();
+                ctx.arc(-size/4 + vampEyeSize/2, -size/6 - vampEyeSize/2, vampEyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/4 + vampEyeSize/2, -size/6 - vampEyeSize/2, vampEyeSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Sonrisa malévola con colmillos
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, size/8, size/4, 0, Math.PI);
+                ctx.stroke();
+                
+                // Colmillos
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.moveTo(-size/6, size/8);
+                ctx.lineTo(-size/6 - size/12, size/4);
+                ctx.lineTo(-size/6 + size/12, size/8);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.moveTo(size/6, size/8);
+                ctx.lineTo(size/6 + size/12, size/4);
+                ctx.lineTo(size/6 - size/12, size/8);
+                ctx.fill();
+                
+                // Capa vampírica
+                ctx.fillStyle = '#500000';
+                ctx.beginPath();
+                ctx.moveTo(-size/2 - 10, -size/3);
+                ctx.lineTo(-size/2, -size/2);
+                ctx.lineTo(size/2, -size/2);
+                ctx.lineTo(size/2 + 10, -size/3);
+                ctx.lineTo(size/2 + 15, size/2);
+                ctx.lineTo(-size/2 - 15, size/2);
+                ctx.closePath();
+                ctx.fill();
+                break;
+                
+            case 'velocista':
+                // Efecto de velocidad/movimiento (estela)
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2 - 5, -size/2, size, size);
+                ctx.fillRect(-size/2 - 10, -size/2, size, size);
+                ctx.globalAlpha = 1;
+                
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#008B8B';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
+                // Ojos
+                const velEyeSize = size * 0.15;
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-size/4, -size/6, velEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/6, velEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-size/4 + velEyeSize/2, -size/6 - velEyeSize/2, velEyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/4 + velEyeSize/2, -size/6 - velEyeSize/2, velEyeSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Sonrisa confiada
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, size/6, size/5, 0, Math.PI);
+                ctx.stroke();
+                
+                // Diseño de rayo en el pecho
+                ctx.fillStyle = '#008B8B';
+                ctx.beginPath();
+                ctx.moveTo(0, -size/6);
+                ctx.lineTo(size/4, 0);
+                ctx.lineTo(0, size/4);
+                ctx.lineTo(size/8, size/4);
+                ctx.lineTo(-size/4, size/2);
+                ctx.lineTo(-size/8, size/8);
+                ctx.lineTo(-size/4, size/8);
+                ctx.closePath();
+                ctx.fill();
+                break;
+                
+            case 'viejo':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#505050';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
+                // Ojos con gafas
+                const viejoEyeSize = size * 0.12;
+                
+                // Marco de gafas
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(-size/4, -size/6, viejoEyeSize * 1.5, viejoEyeSize * 1.2, 0, 0, Math.PI * 2);
+                ctx.ellipse(size/4, -size/6, viejoEyeSize * 1.5, viejoEyeSize * 1.2, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Puente de las gafas
+                ctx.beginPath();
+                ctx.moveTo(-size/4 + viejoEyeSize, -size/6);
+                ctx.lineTo(size/4 - viejoEyeSize, -size/6);
+                ctx.stroke();
+                
+                // Ojos detrás de las gafas
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-size/4, -size/6, viejoEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/4, -size/6, viejoEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-size/4 + viejoEyeSize/2, -size/6 - viejoEyeSize/2, viejoEyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/4 + viejoEyeSize/2, -size/6 - viejoEyeSize/2, viejoEyeSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Barba
+                ctx.fillStyle = '#DCDCDC';
+                ctx.beginPath();
+                ctx.ellipse(0, size/4, size/3, size/4, 0, 0, Math.PI);
+                ctx.fill();
+                
+                // Cejas pobladas
+                ctx.strokeStyle = '#DCDCDC';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-size/4 - viejoEyeSize, -size/6 - viejoEyeSize);
+                ctx.lineTo(-size/4 + viejoEyeSize, -size/6 - viejoEyeSize * 0.8);
+                ctx.moveTo(size/4 - viejoEyeSize, -size/6 - viejoEyeSize * 0.8);
+                ctx.lineTo(size/4 + viejoEyeSize, -size/6 - viejoEyeSize);
+                ctx.stroke();
+                
+                // Bastón
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-size/2 - 10, -size/2);
+                ctx.lineTo(-size/2 - 5, size/2 + 15);
+                ctx.stroke();
+                break;
+                
+            case 'fantasma':
+                ctx.globalAlpha = 0.8;
+                
+                // Efecto de brillo alrededor
+                const ghostGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+                ghostGradient.addColorStop(0, 'rgba(230, 230, 250, 0.1)');
+                ghostGradient.addColorStop(0.6, 'rgba(230, 230, 250, 0.05)');
+                ghostGradient.addColorStop(1, 'rgba(230, 230, 250, 0)');
+                
+                ctx.fillStyle = ghostGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Cuerpo fantasmal (forma más redondeada que un cubo)
+                ctx.fillStyle = character.previewColor;
+                ctx.beginPath();
+                ctx.arc(0, 0, size/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Cola fantasmal que se estrecha
+                ctx.beginPath();
+                ctx.moveTo(-size/3, 0);
+                ctx.quadraticCurveTo(0, size, size/3, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Ojos brillantes
+                const ghostEyeSize = size * 0.1;
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(-size/5, -size/8, ghostEyeSize, 0, Math.PI * 2);
+                ctx.arc(size/5, -size/8, ghostEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillos en los ojos
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(-size/5 + ghostEyeSize/2, -size/8 - ghostEyeSize/2, ghostEyeSize/3, 0, Math.PI * 2);
+                ctx.arc(size/5 + ghostEyeSize/2, -size/8 - ghostEyeSize/2, ghostEyeSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Boca fantasmal (línea suave)
+                ctx.strokeStyle = '#B0C4DE';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, size/8, size/5, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+                break;
+                
+            case 'francotirador':
+                // Cuerpo del cubo
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                
+                // Borde
+                ctx.strokeStyle = '#1A3333';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
+                
+                // Ojos (uno cerrado como apuntando)
+                const sniperEyeSize = size * 0.15;
+                ctx.fillStyle = '#000';
+                
+                // Ojo izquierdo (cerrado/apuntando)
+                ctx.beginPath();
+                ctx.moveTo(-size/4 - sniperEyeSize, -size/6);
+                ctx.lineTo(-size/4 + sniperEyeSize, -size/6);
+                ctx.stroke();
+                
+                // Ojo derecho (abierto)
+                ctx.beginPath();
+                ctx.arc(size/4, -size/6, sniperEyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillo en el ojo abierto
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(size/4 + sniperEyeSize/2, -size/6 - sniperEyeSize/2, sniperEyeSize/3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Boca seria/concentrada
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-size/5, size/6);
+                ctx.lineTo(size/5, size/6);
+                ctx.stroke();
+                
+                // Rifle/mira en la mano
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 3;
+                
+                // Rifle
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(size * 0.7, -size * 0.2);
+                ctx.stroke();
+                
+                // Mira telescópica (círculo en el extremo del rifle)
+                ctx.beginPath();
+                ctx.arc(size * 0.7, -size * 0.2, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#FF0000';
+                ctx.fill();
+                
+                // Soporte del rifle
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, size/3);
+                ctx.stroke();
+                break;
+                
+            default:
+                // Cubo genérico para cualquier otro personaje
+                ctx.fillStyle = character.previewColor;
+                ctx.fillRect(-size/2, -size/2, size, size);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/2, -size/2, size, size);
         }
         
         ctx.restore();
@@ -602,24 +1076,45 @@ export default class CharacterSystem {
     }
     
     handleCharacterSelectionClick(x, y, uiElements) {
-        if (this.isTransitioning) return null;
-        
+        // Comprobar si se hizo clic en la flecha izquierda
         if (this.isPointInCircle(x, y, uiElements.leftArrow.x, uiElements.leftArrow.y, uiElements.leftArrow.radius)) {
             this.selectPreviousCharacter();
-            return 'navigation';
+            return 'navigate';
         }
         
+        // Comprobar si se hizo clic en la flecha derecha
         if (this.isPointInCircle(x, y, uiElements.rightArrow.x, uiElements.rightArrow.y, uiElements.rightArrow.radius)) {
             this.selectNextCharacter();
-            return 'navigation';
+            return 'navigate';
         }
         
-        const selectBtn = uiElements.selectButton;
-        if (x >= selectBtn.x && x <= selectBtn.x + selectBtn.width && 
-            y >= selectBtn.y && y <= selectBtn.y + selectBtn.height) {
+        // Comprobar si se hizo clic en el botón de selección
+        if (x >= uiElements.selectButton.x && 
+            x <= uiElements.selectButton.x + uiElements.selectButton.width &&
+            y >= uiElements.selectButton.y && 
+            y <= uiElements.selectButton.y + uiElements.selectButton.height) {
             return 'select';
         }
         
-        return null;
+        // Comprobar si se hizo clic en alguna miniatura de personaje
+        if (uiElements.miniatures) {
+            for (const mini of uiElements.miniatures) {
+                const radius = mini.size / 2;
+                if (this.isPointInCircle(x, y, mini.x + radius, mini.y + radius, radius)) {
+                    // Buscar el índice del personaje seleccionado
+                    const index = this.characters.findIndex(char => char.id === mini.id);
+                    if (index !== -1 && index !== this.selectedCharacterIndex) {
+                        this.isTransitioning = true;
+                        this.previousCharacterIndex = this.selectedCharacterIndex;
+                        this.selectedCharacterIndex = index;
+                        this.transitionProgress = 0;
+                        return 'navigate';
+                    }
+                    break;
+                }
+            }
+        }
+        
+        return 'none';
     }
 } 
